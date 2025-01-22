@@ -28,7 +28,7 @@ langScene.on("text", async (ctx) => {
                ctx.scene.session.mode.to = ctx.message.text;
                ctx.scene.session.step = "words";
                ctx.reply(
-                  `Введите слово с его переводом, разделяя "-". Если хотите добавить несколько пар слов, пишите их с новой строки.`,
+                  `Введите слово с его переводом, разделяя "-" или загрузите файл. Если хотите добавить несколько пар слов, пишите их с новой строки.`,
                   emptyKeyboard
                );
             } else {
@@ -58,6 +58,34 @@ langScene.on("text", async (ctx) => {
                ctx.reply("Извините, но что-то пошло не так");
             }
          }
+      }
+   }
+});
+langScene.on("document", async (ctx) => {
+   const userId = ctx.from.id;
+   const step = ctx.scene.session.step as string;
+   if (ctx.scene.session.mode && step === "words") {
+      try {
+         const fileId = ctx.message.document.file_id;
+         const fileLink = await ctx.telegram.getFileLink(fileId);
+         const response = await fetch(fileLink.href);
+         const fileContent = await response.text();
+
+         const words = transformWordPairs(fileContent);
+         addWords({
+            user_id: userId,
+            word_pairs: words,
+            from_lang: ctx.scene.session.mode.from,
+            to_lang: ctx.scene.session.mode.to,
+         });
+         ctx.reply(
+            `Отлично вы добавили новые слова. Так держать!`,
+            mainKeyboard
+         );
+         ctx.scene.leave();
+      } catch (error) {
+         console.error("Ошибка при загрузке файла:", error);
+         ctx.reply("Извините, но что-то пошло не так");
       }
    }
 });
